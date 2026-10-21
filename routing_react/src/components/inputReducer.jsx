@@ -100,18 +100,36 @@ export function InputReducer(state, action) {
       };
     }
 
-    case "delete": {
-      const transactions = state.transactions.filter(
-        (transaction) => transaction.id !== action.payload
-      );
+   
+case "delete": {
+  const transactions = state.transactions.filter(
+    (transaction) => transaction.id !== action.payload
+  );
 
-      return {
-        ...state,
-        transactions,
-        balance: calculateBalance(transactions),
-        totalIn: calculateTotalIn(transactions),
-      };
-    }
+  const balance = transactions.reduce((total, transaction) => {
+    const amount = Number(transaction.amount) || 0;
+
+    return transaction.type === "Income"
+      ? total + amount
+      : transaction.type === "Expense"
+      ? total - amount
+      : total;
+  }, 0);
+
+  const totalIn = transactions.reduce((total, transaction) => {
+    return transaction.type === "Income"
+      ? total + (Number(transaction.amount) || 0)
+      : total;
+  }, 0);
+
+  return {
+    ...state,
+    transactions,
+    balance,
+    totalIn,
+  };
+}
+
 
     case "totalIn":
       return {

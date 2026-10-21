@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { TransactionContext } from "../Reducer";
 
 export default function Summary() {
@@ -16,28 +16,36 @@ export default function Summary() {
     ? state.transactions
     : [];
 
-  const totalIncome = transactions.reduce((total, transaction) => {
-    return transaction.type === "Income"
-      ? total + (Number(transaction.amount) || 0)
-      : total;
-  }, 0);
+  const { totalIncome, totalOutcome, incomeCount, outcomeCount, balance } =
+    useMemo(() => {
+      let income = 0;
+      let outcome = 0;
+      let incomes = 0;
+      let expenses = 0;
 
-  const totalOutcome = transactions.reduce((total, transaction) => {
-    return transaction.type === "Expense"
-      ? total + (Number(transaction.amount) || 0)
-      : total;
-  }, 0);
+      transactions.forEach((transaction) => {
+        const amount = Number(transaction.amount) || 0;
 
-  const incomeCount = transactions.filter(
-    (transaction) => transaction.type === "Income"
-  ).length;
+        if (transaction.type === "Income") {
+          income += amount;
+          incomes++;
+        } else if (
+          transaction.type === "Expense" ||
+          transaction.type === "Outcome"
+        ) {
+          outcome += amount;
+          expenses++;
+        }
+      });
 
-  const outcomeCount = transactions.filter(
-    (transaction) => transaction.type === "Expense"
-  ).length;
-
-  // Calculate balance from transactions to keep the summary consistent.
-  const balance = totalIncome - totalOutcome;
+      return {
+        totalIncome: income,
+        totalOutcome: outcome,
+        incomeCount: incomes,
+        outcomeCount: expenses,
+        balance: income - outcome,
+      };
+    }, [transactions]);
 
   const formatAmount = (amount) =>
     amount.toLocaleString("en-US", {
@@ -57,7 +65,7 @@ export default function Summary() {
         mb: 3,
       }}
     >
-      {/* Income */}
+      {/* Total Income */}
       <Card
         sx={{
           backgroundColor: "#ecfdf5",
@@ -81,9 +89,12 @@ export default function Summary() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            <TrendingUpIcon sx={{ color: "#16a34a", fontSize: 32 }} />
+            <TrendingUpIcon
+              sx={{ color: "#16a34a", fontSize: 32 }}
+            />
           </Box>
 
           <Box>
@@ -91,7 +102,11 @@ export default function Summary() {
               Total Income
             </Typography>
 
-            <Typography variant="h5" fontWeight={700} sx={{ color: "#16a34a" }}>
+            <Typography
+              variant="h5"
+              fontWeight={700}
+              sx={{ color: "#16a34a" }}
+            >
               {formatAmount(totalIncome)}
             </Typography>
 
@@ -102,7 +117,7 @@ export default function Summary() {
         </CardContent>
       </Card>
 
-      {/* Expenses */}
+      {/* Total Expenses */}
       <Card
         sx={{
           backgroundColor: "#fff1f2",
@@ -126,9 +141,12 @@ export default function Summary() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            <TrendingDownIcon sx={{ color: "#dc2626", fontSize: 32 }} />
+            <TrendingDownIcon
+              sx={{ color: "#dc2626", fontSize: 32 }}
+            />
           </Box>
 
           <Box>
@@ -136,7 +154,11 @@ export default function Summary() {
               Total Expenses
             </Typography>
 
-            <Typography variant="h5" fontWeight={700} sx={{ color: "#dc2626" }}>
+            <Typography
+              variant="h5"
+              fontWeight={700}
+              sx={{ color: "#dc2626" }}
+            >
               {formatAmount(totalOutcome)}
             </Typography>
 
@@ -147,7 +169,7 @@ export default function Summary() {
         </CardContent>
       </Card>
 
-      {/* Balance */}
+      {/* Current Balance */}
       <Card
         sx={{
           backgroundColor: "#eff6ff",
@@ -171,9 +193,12 @@ export default function Summary() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            <AccountBalanceWalletIcon sx={{ color: "#2563eb", fontSize: 30 }} />
+            <AccountBalanceWalletIcon
+              sx={{ color: "#2563eb", fontSize: 30 }}
+            />
           </Box>
 
           <Box>
@@ -181,7 +206,11 @@ export default function Summary() {
               Current Balance
             </Typography>
 
-            <Typography variant="h5" fontWeight={700} sx={{ color: "#2563eb" }}>
+            <Typography
+              variant="h5"
+              fontWeight={700}
+              sx={{ color: "#2563eb" }}
+            >
               {formatAmount(balance)}
             </Typography>
 

@@ -1,3 +1,4 @@
+
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Box from "@mui/material/Box";
@@ -45,10 +46,42 @@ export default function TransactionForm() {
   }
 
   function handleAddClick() {
+    const amount = Number(state.amount);
+    const description = state.description.trim();
+
+    if (
+      !description ||
+      state.amount === "" ||
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      return;
+    }
+
+    if (state.type === "Expense" && amount > state.balance) {
+      return;
+    }
+
     dispatch({
       type: "ADD_TRANSACTION",
     });
   }
+
+  const amount = Number(state.amount);
+
+  const isInvalidAmount =
+    state.amount === "" ||
+    !Number.isFinite(amount) ||
+    amount <= 0;
+
+  const isExpenseExceedingBalance =
+    state.type === "Expense" &&
+    amount > state.balance;
+
+  const isDisabled =
+    !state.description.trim() ||
+    isInvalidAmount ||
+    isExpenseExceedingBalance;
 
   return (
     <Card
@@ -88,14 +121,25 @@ export default function TransactionForm() {
             fullWidth
             value={state.amount}
             onChange={handleAmountInput}
+            inputProps={{ min: 0.01, step: "any" }}
+            error={state.amount !== "" && isInvalidAmount}
+            helperText={
+              state.amount !== "" && isInvalidAmount
+                ? "Amount must be greater than zero"
+                : ""
+            }
           />
 
           <FormControl fullWidth>
             <InputLabel>Type</InputLabel>
 
-            <Select label="Type" value={state.type} onChange={handleTypeInput}>
+            <Select
+              label="Type"
+              value={state.type}
+              onChange={handleTypeInput}
+            >
               <MenuItem value="Income">Income</MenuItem>
-              <MenuItem value="Expense" disabled={Number(state.amount) > state.balance}>Outcome</MenuItem>
+              <MenuItem value="Expense">Expense</MenuItem>
             </Select>
           </FormControl>
 
@@ -126,12 +170,18 @@ export default function TransactionForm() {
                 backgroundColor: "#15803d",
               },
             }}
-            disabled={Number(state.amount) > state.balance&&state.type=="Expense"}
+            disabled={isDisabled}
             onClick={handleAddClick}
           >
             Add Transaction
           </Button>
         </Box>
+
+        {isExpenseExceedingBalance && (
+          <Typography color="error" variant="body2" mt={1}>
+            Expense cannot exceed your available balance.
+          </Typography>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,3 +1,4 @@
+
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -9,39 +10,40 @@ import { useContext } from "react";
 import { TransactionContext } from "../Reducer";
 
 export default function Summary() {
-  const { state, dispatch } = useContext(TransactionContext);
+  const { state } = useContext(TransactionContext);
 
-  let totalIncome = 0;
+  const transactions = Array.isArray(state.transactions)
+    ? state.transactions
+    : [];
 
-  state.transactions.forEach((t) => {
-    if (t.type === "Income") {
-      totalIncome += t.amount;
-    }
-  });
+  const totalIncome = transactions.reduce((total, transaction) => {
+    return transaction.type === "Income"
+      ? total + (Number(transaction.amount) || 0)
+      : total;
+  }, 0);
 
-  let totalOutcome = 0;
+  const totalOutcome = transactions.reduce((total, transaction) => {
+    return transaction.type === "Expense"
+      ? total + (Number(transaction.amount) || 0)
+      : total;
+  }, 0);
 
-  state.transactions.forEach((t) => {
-    if (t.type === "Expense") {
-      totalOutcome += t.amount;
-    }
-  });
+  const incomeCount = transactions.filter(
+    (transaction) => transaction.type === "Income"
+  ).length;
 
-  let incomeCount = 0;
+  const outcomeCount = transactions.filter(
+    (transaction) => transaction.type === "Expense"
+  ).length;
 
-  state.transactions.forEach((t) => {
-    if (t.type === "Income") {
-      incomeCount++;
-    }
-  });
+  // Calculate balance from transactions to keep the summary consistent.
+  const balance = totalIncome - totalOutcome;
 
-  let outcomeCount = 0;
-
-  state.transactions.forEach((t) => {
-    if (t.type === "Outcome") {
-      outcomeCount--;
-    }
-  });
+  const formatAmount = (amount) =>
+    amount.toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
 
   return (
     <Box
@@ -90,11 +92,11 @@ export default function Summary() {
             </Typography>
 
             <Typography variant="h5" fontWeight={700} sx={{ color: "#16a34a" }}>
-              {totalIncome}
+              {formatAmount(totalIncome)}
             </Typography>
 
             <Typography variant="body2" color="text.secondary">
-              {incomeCount}
+              {incomeCount} transactions
             </Typography>
           </Box>
         </CardContent>
@@ -131,15 +133,15 @@ export default function Summary() {
 
           <Box>
             <Typography variant="body2" color="text.secondary">
-              Total OutCome
+              Total Expenses
             </Typography>
 
             <Typography variant="h5" fontWeight={700} sx={{ color: "#dc2626" }}>
-              {totalOutcome}
+              {formatAmount(totalOutcome)}
             </Typography>
 
             <Typography variant="body2" color="text.secondary">
-              {outcomeCount}
+              {outcomeCount} transactions
             </Typography>
           </Box>
         </CardContent>
@@ -180,7 +182,7 @@ export default function Summary() {
             </Typography>
 
             <Typography variant="h5" fontWeight={700} sx={{ color: "#2563eb" }}>
-              {state.balance}
+              {formatAmount(balance)}
             </Typography>
 
             <Typography variant="body2" color="text.secondary">

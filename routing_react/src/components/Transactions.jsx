@@ -1,3 +1,4 @@
+
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Box from "@mui/material/Box";
@@ -15,12 +16,14 @@ import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { useContext } from "react";
+import { useContext, useMemo, useState } from "react";
 import { TransactionContext } from "../Reducer";
-import { useMemo, useState } from "react";
 
 export default function Transactions() {
   const { state, dispatch } = useContext(TransactionContext);
+
+  const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
 
   function handleDeleteClick(id) {
     dispatch({
@@ -29,61 +32,36 @@ export default function Transactions() {
     });
   }
 
-  const [filter, setFilter] = useState("All");
-  const [search, setSearch] = useState("");
+  const filteredTransactions = useMemo(() => {
+    const transactions = Array.isArray(state.transactions)
+      ? state.transactions
+      : [];
 
-  const clickToRender = useMemo(() => {
-    let transactions = state.transactions;
+    const normalizedSearch = search.trim().toLowerCase();
 
-    if (filter === "Income") {
-      transactions = transactions.filter((t) => {
-        return t.type === "Income";
-      });
-    } else if (filter === "Expense") {
-      transactions = transactions.filter((t) => {
-        return t.type === "Expense";
-      });
-    }
+    return transactions.filter((transaction) => {
+      const matchesType =
+        filter === "All" || transaction.type === filter;
 
-    return transactions.filter((t) => {
-      return t.description.toLowerCase().includes(search.toLowerCase());
+      const description =
+        typeof transaction.description === "string"
+          ? transaction.description
+          : "";
+
+      const matchesSearch = description
+        .toLowerCase()
+        .includes(normalizedSearch);
+
+      return matchesType && matchesSearch;
     });
   }, [state.transactions, filter, search]);
-  const transactionList = clickToRender.map((t) => {
-    return (
-      <TableRow key={t.id} hover>
-        <TableCell>
-          <Typography fontWeight={500}>{t.description}</Typography>
-        </TableCell>
 
-        <TableCell>
-          <Chip label={t.category} size="small" />
-        </TableCell>
+  const formatAmount = (amount) => {
+    const numericAmount = Number(amount);
 
-        <TableCell>
-          <Chip
-            label={t.type}
-            size="small"
-            color={t.type === "Income" ? "success" : "error"}
-          />
-        </TableCell>
-
-        <TableCell>
-          <Typography fontWeight={700}>
-            {t.type === "Income" ? "+" : "-"}${Math.abs(t.amount).toFixed(2)}
-          </Typography>
-        </TableCell>
-
-        <TableCell>{t.date}</TableCell>
-
-        <TableCell align="center">
-          <IconButton color="error" onClick={() => handleDeleteClick(t.id)}>
-            <DeleteIcon />
-          </IconButton>
-        </TableCell>
-      </TableRow>
-    );
-  });
+    return (Number.isFinite(numericAmount) ? Math.abs(numericAmount) : 0)
+      .toFixed(2);
+  };
 
   return (
     <Card sx={{ borderRadius: 3 }}>
@@ -111,8 +89,9 @@ export default function Transactions() {
           <TextField
             size="small"
             placeholder="Search transactions..."
-            sx={{ width: { xs: "100%", md: 250 } }}
+            value={search}
             onChange={(e) => setSearch(e.target.value)}
+            sx={{ width: { xs: "100%", md: 250 } }}
             slotProps={{
               input: {
                 startAdornment: (
@@ -138,18 +117,20 @@ export default function Transactions() {
           }}
         >
           <Box sx={{ display: "flex", gap: 1 }}>
-            <Button value="All" onClick={(e) => setFilter(e.target.value)}>
-              All
-            </Button>
-
-            <Button value="Income" onClick={(e) => setFilter(e.target.value)}>
-              Income
-            </Button>
-
-            <Button value="Expense" onClick={(e) => setFilter(e.target.value)}>
-              Outcome
-            </Button>
+            {["All", "Income", "Expense"].map((type) => (
+              <Button
+                key={type}
+                variant={filter === type ? "contained" : "outlined"}
+                onClick={() => setFilter(type)}
+              >
+                {type === "Expense" ? "Expenses" : type}
+              </Button>
+            ))}
           </Box>
+
+          <Typography variant="body2" color="text.secondary">
+            {filteredTransactions.length} transactions
+          </Typography>
         </Box>
 
         {/* Table */}
@@ -166,7 +147,69 @@ export default function Transactions() {
               </TableRow>
             </TableHead>
 
-            <TableBody>{transactionList}</TableBody>
+            <TableBody>
+              {filteredTransactions.length > 0 ? (
+                filteredTransactions.map((transaction) => {
+                  const isIncome = transaction.type === "Income";
+
+                  return (
+                    <TableRow key={transaction.id} hover>
+                      <TableCell>
+                        <Typography fontWeight={500}>
+                          {transaction.description || "Untitled"}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Chip
+                          label={transaction.category || "Other"}
+                          size="small"
+                        />
+                      </TableCell>
+
+                      <TableCell>
+                        <Chip
+                          label={isIncome ? "Income" : "Expense"}
+                          size="small"
+                          color={isIncome ? "success" : "error"}
+                        />
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography fontWeight={700}>
+                          {isIncome ? "+" : "-"}$
+                          {formatAmount(transaction.amount)}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        {transaction.date || "—"}
+                      </TableCell>
+
+                      <TableCell align="center">
+                        <IconButton
+                          color="error"
+                          aria-label="Delete transaction"
+                          onClick={() =>
+                            handleDeleteClick(transaction.id)
+                          }
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <Typography color="text.secondary" py={3}>
+                      No transactions found.
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
           </Table>
         </TableContainer>
       </CardContent>

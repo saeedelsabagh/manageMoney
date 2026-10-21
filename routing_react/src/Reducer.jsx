@@ -1,33 +1,57 @@
-import { createContext, useReducer, useEffect, useState } from "react";
-import { InputReducer, initialState } from "./components/inputReducer.jsx";
 
-export const TransactionContext = createContext();
+import {
+  createContext,
+  useReducer,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  InputReducer,
+  initialState,
+} from "./components/inputReducer.jsx";
+
+export const TransactionContext = createContext(null);
 
 export const TransactionProvider = ({ children }) => {
   const [state, dispatch] = useReducer(InputReducer, initialState);
   const [loaded, setLoaded] = useState(false);
-  // Get transactions from LocalStorage
+
+  // Load transactions from LocalStorage
   useEffect(() => {
-    const saved = localStorage.getItem("strlist");
+    try {
+      const saved = localStorage.getItem("strlist");
 
-    if (saved) {
-      dispatch({
-        type: "load",
-        payload: {
-          state: {
-            transactions: JSON.parse(saved),
-          },
-        },
-      });
+      if (saved) {
+        const transactions = JSON.parse(saved);
+
+        if (Array.isArray(transactions)) {
+          dispatch({
+            type: "load",
+            payload: {
+              state: { transactions },
+            },
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load saved transactions:", error);
+    } finally {
+      setLoaded(true);
     }
-
-    setLoaded(true);
   }, []);
 
-  // Save transactions to LocalStorage
+  // Save transactions only after loading has finished
   useEffect(() => {
-    if (loaded) {
-      localStorage.setItem("strlist", JSON.stringify(state.transactions));
+    if (!loaded) return;
+
+    try {
+      localStorage.setItem(
+        "strlist",
+        JSON.stringify(state.transactions)
+      );
+    } catch (error) {
+      console.error("Failed to save transactions:", error);
     }
   }, [state.transactions, loaded]);
 

@@ -1,3 +1,4 @@
+
 export const initialState = {
   description: "",
   amount: "",
@@ -5,6 +6,31 @@ export const initialState = {
   category: "Food",
   balance: 0,
   transactions: [],
+  totalIn: 0,
+};
+
+const calculateBalance = (transactions) => {
+  return transactions.reduce((balance, transaction) => {
+    const amount = Number(transaction.amount) || 0;
+
+    if (transaction.type === "Income") {
+      return balance + amount;
+    }
+
+    if (transaction.type === "Expense") {
+      return balance - amount;
+    }
+
+    return balance;
+  }, 0);
+};
+
+const calculateTotalIn = (transactions) => {
+  return transactions.reduce((total, transaction) => {
+    return transaction.type === "Income"
+      ? total + (Number(transaction.amount) || 0)
+      : total;
+  }, 0);
 };
 
 export function InputReducer(state, action) {
@@ -33,55 +59,80 @@ export function InputReducer(state, action) {
         category: action.payload,
       };
 
-    case "ADD_TRANSACTION":
+    case "ADD_TRANSACTION": {
+      const amount = Number(state.amount);
+
+      // Reject invalid amounts and empty descriptions
+      if (
+        !state.description.trim() ||
+        state.amount === "" ||
+        !Number.isFinite(amount) ||
+        amount <= 0
+      ) {
+        return state;
+      }
+
+      // Prevent expenses greater than the available balance
+      const currentBalance = calculateBalance(state.transactions);
+
+      if (state.type === "Expense" && amount > currentBalance) {
+        return state;
+      }
+
       const newTransaction = {
         id: Date.now(),
-        description: state.description,
-        amount: Number(state.amount),
+        description: state.description.trim(),
+        amount,
         type: state.type,
         category: state.category,
         date: new Date().toLocaleDateString(),
       };
 
+      const transactions = [...state.transactions, newTransaction];
+
       return {
         ...state,
-        transactions: [...state.transactions, newTransaction],
+        transactions,
+        balance: calculateBalance(transactions),
+        totalIn: calculateTotalIn(transactions),
         description: "",
         amount: "",
-
-        balance:
-          state.type === "Income"
-            ? state.balance + Number(state.amount)
-            : state.balance - Number(state.amount),
       };
+    }
 
-    case "delete":
+    case "delete": {
+      const transactions = state.transactions.filter(
+        (transaction) => transaction.id !== action.payload
+      );
+
       return {
         ...state,
-        transactions: state.transactions.filter(
-          (transaction) => transaction.id !== action.payload
-        ),
+        transactions,
+        balance: calculateBalance(transactions),
+        totalIn: calculateTotalIn(transactions),
       };
+    }
 
     case "totalIn":
-      let total = 0;
-
-      state.transactions.forEach((t) => {
-        if (t.type === "Income") {
-          total += t.amount;
-        }
-      });
-
       return {
         ...state,
-        totalIn: total,
+        totalIn: calculateTotalIn(state.transactions),
       };
 
-    case "load":
+    case "load": {
+      const savedState = action.payload?.state ?? {};
+      const transactions = Array.isArray(savedState.transactions)
+        ? savedState.transactions
+        : [];
+
       return {
         ...initialState,
-        ...action.payload.state,
+        ...savedState,
+        transactions,
+        balance: calculateBalance(transactions),
+        totalIn: calculateTotalIn(transactions),
       };
+    }
 
     default:
       return state;
